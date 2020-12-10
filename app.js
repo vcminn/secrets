@@ -43,7 +43,8 @@ const userSchema = new mongoose.Schema({
     email: String,
     password: String,
     googleId: String,
-    facebookId: String
+    facebookId: String,
+    secret: [String]
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -125,17 +126,44 @@ app.get("/register", (req, res) => {
 });
 
 app.get("/secrets", (req, res) => {
-    if (req.isAuthenticated()) {
-        res.render("secrets");
-    } else {
-        res.redirect("/login");
-    }
-})
+    User.find({ "secret": { $ne: null } }, (err, foundUsers) => {
+        if (err) {
+            console.log(err);
+        } else {
+            res.render("secrets", { userWithSecrets: foundUsers });
+        }
+    });
+});
 
 app.get("/logout", (req, res) => {
     req.logout();
     res.redirect("/");
 })
+
+app.get("/submit", (req, res) => {
+    if (req.isAuthenticated()) {
+        res.render("submit");
+    } else {
+        res.redirect("/login");
+    }
+});
+
+app.post("/submit", (req, res) => {
+    const submittedSecret = req.body.secret;
+    // console.log(req.user);
+    User.findById(req.user.id, (err, user) => {
+        if (err) {
+            // console.log(err);
+        } else {
+            if (user) {
+                user.secret.push(submittedSecret);
+                user.save(() => {
+                    res.redirect("/secrets");
+                })
+            }
+        }
+    })
+});
 
 app.post("/register", (req, res) => {
     // bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
